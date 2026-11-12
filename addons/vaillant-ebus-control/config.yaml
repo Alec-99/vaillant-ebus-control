@@ -1,0 +1,40 @@
+name: "Vaillant eBUS Control (monitor-only)"
+version: "0.2.0"
+slug: "vaillant_ebus_control"
+description: "Pinned ebusd and MQTT-first virtual thermostat prototype; no boiler writes"
+url: "https://github.com/Alec-99/vaillant-ebus-control"
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+ingress: true
+ingress_port: 8099
+ingress_stream: true
+panel_admin: true
+panel_title: "Vaillant eBUS Monitor"
+panel_icon: "mdi:thermometer-water"
+services:
+  - mqtt:need
+options:
+  enable_bus: false
+  network_device: ""
+  mqtt_prefix: "vaillant_ebus/v1"
+  poll_interval: 30
+  room_target: 20.0
+  curve_slope: 1.2
+  room_kp: 2.0
+  room_ki: 0.0
+  flow_min: 30.0
+  flow_max: 65.0
+schema:
+  enable_bus: bool
+  network_device: str?
+  mqtt_prefix: str
+  poll_interval: int(10,300)
+  room_target: float(5,30)
+  curve_slope: float(0,5)
+  room_kp: float(0,20)
+  room_ki: float(0,1)
+  flow_min: float(20,80)
+  flow_max: float(20,85)

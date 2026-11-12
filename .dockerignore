@@ -1,0 +1,16 @@
+# Avoid sending private raw boiler captures and generated reports to Docker/remote builders.
+.git
+.gitignore
+captures/
+data/
+docs/
+*.log
+*.xlsx
+*.docx
+*.pdf
+*.zip
+.env
+.env.*
+**/secrets*
+__pycache__/
+.pytest_cache/

@@ -1,0 +1,113 @@
+name: Public release safety, tests and build
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  privacy-audit:
+    name: Allowlisted files and privacy scanner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Block private content, unexpected files and embedded credentials
+        run: python scripts/check_public_release.py --root .
+
+  gitleaks:
+    name: Independent secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  unit-tests:
+    needs: [privacy-audit, gitleaks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: python -m pip install pytest PyYAML
+      - name: Test manifest and Python compilation
+        run: |
+          python - <<'PY'
+          import yaml
+          with open('addons/vaillant-ebus-control/config.yaml') as f:
+              options=yaml.safe_load(f)
+          assert options['init'] is False and 'mqtt:need' in options['services']
+          assert options['options']['enable_bus'] is False
+          PY
+          python -m compileall -q addons/vaillant-ebus-control/app
+      - name: Unit tests (no boiler involved)
+        run: python -m pytest tests -q
+
+  webui-preview:
+    needs: [privacy-audit, gitleaks]
+    name: Build standalone offline HTML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python scripts/build_webui_standalone.py --output dist/vaillant-ebus-webui.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vaillant-webui-standalone
+          path: dist/vaillant-ebus-webui.html
+          retention-days: 30
+          if-no-files-found: error
+
+  ebusd-container-smoke:
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build pinned source without physical adapter
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: build/ebusd/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: vaillant-ebusd-source-test:ci
+      - run: docker run --rm --network none vaillant-ebusd-source-test:ci
+
+  addon-build:
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build monitor-only app without running against boiler
+        uses: docker/build-push-action@v6
+        with:
+          context: ./addons/vaillant-ebus-control
+          file: ./addons/vaillant-ebus-control/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: vaillant-ebus-control:ci
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install paho-mqtt==2.1.0
+      - name: Disposable Supervisor / MQTT integration smoke test
+        run: python tests/integration/runtime_smoke.py --image vaillant-ebus-control:ci

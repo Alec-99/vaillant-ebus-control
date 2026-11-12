@@ -1,0 +1,10 @@
+# Shell-compatible pinned ebusd source for the isolated image build.
+# Verified: 2026-10-30. The fork and john30/ebusd master had identical SHA.
+# Immutable upstream source pin. Update only through the maintainers' verified release process.
+# Do not silently replace EBUSD_COMMIT with master/latest.
+EBUSD_REPO=https://github.com/Alec-99/ebusd.git
+EBUSD_REF=master
+EBUSD_COMMIT=38db2d28bd5622cadb6078c1662c6f7da5cef891
+UPSTREAM_REPO=https://github.com/john30/ebusd.git
+EBUSD_SOURCE_VERSION=26.1
+EBUSD_PIN_STATUS=verified-remote-commit-not-built
