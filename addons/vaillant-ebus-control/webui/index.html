@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111a1c">
+  <title>Vaillant eBUS Control · UI-prototype</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="curve_simulator.js" defer></script>
+  <script src="app.js" defer></script>
+  <script src="mqtt_viewer.js" defer></script>
+  <script src="live_adapter.js" defer></script>
+</head>
+<body>
+  <svg class="svg-sprites" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 21v-8h6v8"/></symbol>
+    <symbol id="i-curve" viewBox="0 0 24 24"><path d="M3 20h18M4 4v16"/><path d="M5 17c3-1 4-9 8-9 3 0 4 5 7-4"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M2 12h4l3-7 5 14 3-7h5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-mqtt" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 11 17 6M7 13l10 5"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="m6 9 3 3-3 3M12 16h6"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.5 6"/><path d="M20 4v7h-7"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M6 5a9 9 0 1 0 12 0"/></symbol>
+  </svg>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Hoofdnavigatie">
+      <div class="brand"><span class="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 22 12 9l8 11 5-7 4 9"/><path d="M3 25h26"/></svg></span><span class="brand-copy"><strong>Vaillant<span class="brand-accent">Control</span></strong><small>eBUS MANAGEMENT</small></span></div>
+      <div class="site-note"><span class="small-dot"></span> FRONTEND-PROTOTYPE <span class="tiny-right">v0.1</span></div>
+      <nav class="tabs" role="tablist" aria-label="Pagina's" aria-orientation="vertical">
+        <button class="tab active" id="tab-overview" role="tab" aria-selected="true" aria-controls="panel-overview" data-tab="overview" tabindex="0"><svg><use href="#i-grid"/></svg><span>Overzicht</span></button>
+        <button class="tab" id="tab-climate" role="tab" aria-selected="false" aria-controls="panel-climate" data-tab="climate" tabindex="-1"><svg><use href="#i-home"/></svg><span>Thermostaat</span></button>
+        <button class="tab" id="tab-curve" role="tab" aria-selected="false" aria-controls="panel-curve" data-tab="curve" tabindex="-1"><svg><use href="#i-curve"/></svg><span>Stooklijn</span></button>
+        <button class="tab" id="tab-diagnostics" role="tab" aria-selected="false" aria-controls="panel-diagnostics" data-tab="diagnostics" tabindex="-1"><svg><use href="#i-activity"/></svg><span>Diagnostiek</span></button>
+        <button class="tab" id="tab-events" role="tab" aria-selected="false" aria-controls="panel-events" data-tab="events" tabindex="-1"><svg><use href="#i-list"/></svg><span>Gebeurtenissen</span></button>
+        <button class="tab" id="tab-mqtt" role="tab" aria-selected="false" aria-controls="panel-mqtt" data-tab="mqtt" tabindex="-1"><svg><use href="#i-mqtt"/></svg><span>MQTT Debugger</span></button>
+        <button class="tab" id="tab-terminal" role="tab" aria-selected="false" aria-controls="panel-terminal" data-tab="terminal" tabindex="-1"><svg><use href="#i-terminal"/></svg><span>Terminal</span></button>
+        <button class="tab" id="tab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" tabindex="-1"><svg><use href="#i-settings"/></svg><span>Instellingen</span></button>
+      </nav>
+      <div class="side-bottom">
+        <div class="side-status"><svg><use href="#i-shield"/></svg><div><strong>Monitor-only</strong><span>Geen ketelcommando's</span></div></div>
+        <p>Deze schermen gebruiken uitsluitend voorbeelddata. Er is nog geen REST-backend.</p>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb">Vaillant eBUS <svg><use href="#i-chevron"/></svg> <strong id="breadcrumb">Overzicht</strong></div>
+        <div class="header-right"><span class="top-indicator"><span class="small-dot"></span> Demomodus</span><span class="top-version">UI PROTOTYPE · 0.1</span></div>
+      </header>
+      <main class="main" id="main">
+        <div class="page-intro"><div><div class="eyebrow" id="section-eyebrow">SYSTEEMOVERZICHT</div><h1 id="page-title">Jouw verwarmingsregeling</h1><p id="page-subtitle">Een centraal overzicht van de virtuele thermostaat en de eBUS-status.</p></div><span class="pill pill-demo"><span class="small-dot"></span> DEMO · GEEN LIVE DATA</span></div>
+
+        <section class="page" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+          <div class="notice live-status-banner"><div><strong id="live-mode-label">Standalone HTML · uitsluitend demo</strong><p id="live-connection">Geen backendverbinding in dit bestand. Overzichtswaarden zijn fictief.</p><p id="live-bus-state">Werkelijke ketelstatus onbekend</p><p id="live-controller-state">Controllerstatus onbekend</p><span id="live-overview-status" class="pill pill-quiet">OFFLINE DEMO</span></div></div>
+          <div class="metrics metrics-four">
+            <article class="metric"><span class="metric-label">Gewenste kamer</span><div class="metric-value"><span data-bind="target">21,5</span><span class="unit">°C</span></div><span class="metric-foot">Instelbaar in Thermostaat</span></article>
+            <article class="metric"><span class="metric-label">Kamer (demo)</span><div class="metric-value"><span data-bind="room">18,2</span><span class="unit">°C</span></div><span class="metric-foot" data-bind="roomValidity">Voorbeeldsensor</span></article>
+            <article class="metric"><span class="metric-label">Buiten (demo)</span><div class="metric-value"><span data-bind="outdoor">6,0</span><span class="unit">°C</span></div><span class="metric-foot" data-bind="outdoorValidity">Voorbeeldsensor</span></article>
+            <article class="metric metric-accent"><span class="metric-label">Berekende aanvoer</span><div class="metric-value"><span data-bind="flow">46,7</span><span class="unit">°C</span></div><span class="metric-foot">Simulatie · niet naar ketel gestuurd</span></article>
+          </div>
+          <div class="grid-main">
+            <article class="card hero"><div class="card-head"><div><div class="eyebrow">REGELING</div><h2>Virtuele thermostaat</h2></div><span class="pill pill-quiet">SIMULATIE</span></div><div class="hero-body"><div class="hero-thermo"><div class="hero-big"><span data-bind="room">18,2</span><small>°C</small></div><div class="hero-under">Huidige kamertemperatuur</div><div class="hero-target">Doel <strong><span data-bind="target">21,5</span> °C</strong></div></div><div class="hero-info"><div class="row-between"><span>Bedrijfsmodus</span><strong data-bind="mode">Verwarmen</strong></div><div class="row-between"><span>Gesimuleerde warmtevraag</span><strong class="text-accent" data-bind="demand">Ja</strong></div><div class="row-between"><span>Regelstatus</span><strong data-bind="reason">Warmtevraag berekend</strong></div><button class="button ghost wide" data-navigate="climate">Thermostaat openen <svg><use href="#i-chevron"/></svg></button></div></div></article>
+            <article class="card status-card"><div class="card-head"><div><div class="eyebrow">SYSTEEM</div><h2>Componentstatus</h2></div><span class="pill pill-muted">VOORBEELD</span></div><div class="service-list"><div class="service"><div class="service-left"><span class="status-icon">M</span><div><strong>MQTT-interface</strong><small>Mock · geen brokerverbinding</small></div></div><span class="pill pill-quiet">Demo</span></div><div class="service"><div class="service-left"><span class="status-icon">E</span><div><strong>ebusd</strong><small>Verbinding met adapter</small></div></div><span class="pill pill-off">Uit</span></div><div class="service"><div class="service-left"><span class="status-icon">V</span><div><strong>Virtuele controller</strong><small>Alleen berekeningen</small></div></div><span class="pill pill-quiet">Monitor</span></div><div class="service"><div class="service-left"><span class="status-icon">K</span><div><strong>Ketelcommando's</strong><small>SetMode / pomp</small></div></div><span class="pill pill-off">Geblokkeerd</span></div></div></article>
+          </div>
+          <div class="grid-two">
+            <article class="card"><div class="card-head"><div><div class="eyebrow">SIMULATIE</div><h2>Wat berekent de controller?</h2></div><button class="text-link" data-navigate="curve">Open stooklijn <svg><use href="#i-chevron"/></svg></button></div><div class="result-grid"><div><span class="small-label">Gewenste aanvoer</span><div class="value-md"><span data-bind="flow">46,7</span> °C</div></div><div><span class="small-label">Warmtevraag</span><div class="value-md" data-bind="demand">Ja</div></div><div><span class="small-label">Stooklijnfactor</span><div class="value-md" data-bind="slope">1,2</div></div></div><div class="micro-note">Gebaseerd op de actuele waarden in deze demo. Dit is geen gemeten keteluitgang.</div></article>
+            <article class="card"><div class="card-head"><div><div class="eyebrow">VEILIGHEID</div><h2>Huidige beperkingen</h2></div><svg class="section-icon"><use href="#i-shield"/></svg></div><div class="safe-list"><div><span class="check-mark">✓</span> Geen eBUS-schrijffuncties</div><div><span class="check-mark">✓</span> Fysieke VRT 370 blijft actief</div><div><span class="check-mark">✓</span> Geen pomp-override</div><div><span class="check-mark">✓</span> Geen REST- of MQTT-netwerkverzoeken vanuit deze UI</div></div></article>
+          </div>
+        </section>
+
+        <section class="page" id="panel-climate" role="tabpanel" aria-labelledby="tab-climate" hidden>
+          <div class="grid-main climate-layout">
+            <article class="card thermostat-card"><div class="card-head"><div><div class="eyebrow">KAMERREGELING</div><h2>Temperatuur instellen</h2></div><span class="pill pill-quiet">LOKALE DEMO</span></div>
+              <div class="dial"><div class="dial-inner"><div class="dial-eyebrow">GEWENSTE TEMPERATUUR</div><div class="dial-value"><span data-bind="target">21,5</span><small>°C</small></div><div class="dial-room">Kamer <span data-bind="room">18,2</span> °C</div></div></div>
+              <div class="step-controls"><button class="round-button" type="button" id="decrease-target" aria-label="Verlaag doeltemperatuur met 0,5 graden">−</button><span>Temperatuur aanpassen</span><button class="round-button" type="button" id="increase-target" aria-label="Verhoog doeltemperatuur met 0,5 graden">+</button></div>
+              <div class="mode-picker" role="group" aria-label="Bedrijfsmodus"><button type="button" class="mode-option active" data-mode="heat" aria-pressed="true"><svg><use href="#i-sun"/></svg> Verwarmen</button><button type="button" class="mode-option" data-mode="off" aria-pressed="false"><svg><use href="#i-power"/></svg> Uit</button></div><p class="micro-note">De doeltemperatuur en modus veranderen alleen de visuele simulatie, niet de echte ketel.</p>
+            </article>
+            <div class="stack">
+              <article class="card"><div class="card-head"><div><div class="eyebrow">SENSOREN</div><h2>Simuleer meetwaarden</h2></div></div><div class="form-stack"><label class="input-group"><span class="label-row"><strong>Kamertemperatuur</strong><output id="room-value">18,2 °C</output></span><input id="room-slider" type="range" min="10" max="30" step="0.1" value="18.2"></label><label class="input-group"><span class="label-row"><strong>Buitentemperatuur</strong><output id="outdoor-value">6,0 °C</output></span><input id="outdoor-slider" type="range" min="-20" max="35" step="0.5" value="6"></label></div><div class="toggle-row"><label class="toggle"><input type="checkbox" id="room-valid" checked><span class="switch"></span> Kamerdata geldig</label><label class="toggle"><input type="checkbox" id="outdoor-valid" checked><span class="switch"></span> Buitendata geldig</label></div><p class="micro-note">Schakel een sensor uit om te zien hoe de controller veilig naar 'geen warmtevraag' terugvalt.</p></article>
+              <article class="card"><div class="card-head"><div><div class="eyebrow">RESULTAAT</div><h2>Berekende warmtevraag</h2></div></div><div class="result-grid"><div><span class="small-label">Aanvoertemperatuur</span><div class="value-md"><span data-bind="flow">46,7</span> °C</div></div><div><span class="small-label">Warmtevraag</span><div class="value-md" data-bind="demand">Ja</div></div></div><div class="reason-label" id="climate-reason">Warmtevraag berekend</div></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="panel-curve" role="tabpanel" aria-labelledby="tab-curve" hidden>
+<div class="curve-views" role="group" aria-label="Stooklijnweergave">
+<button class="button active" data-curve-view="static" aria-pressed="true" type="button">Stooklijn</button>
+<button class="button outlined" data-curve-view="sim" aria-pressed="false" type="button">Tijdsimulatie</button>
+</div>
+<div id="curve-panel-static">
+<div class="grid-main curve-layout">
+<article class="card chart-card">
+<div class="card-head"><div><div class="eyebrow">WEERSAFHANKELIJKE REGELING</div><h2>Vergelijk stooklijnen</h2></div><span class="pill pill-quiet">OFFLINE DEMO</span></div>
+<div class="curve-legend"><span><i class="key key-base"></i>Basis</span><span><i class="key key-room"></i>Met kamercompensatie</span><span><i class="key key-bound"></i>Begrensd</span></div>
+<div class="chart-wrap"><svg id="curve-chart" viewBox="0 0 740 340" role="img" aria-label="Stooklijn. Klik of sleep om buitentemperatuur te wijzigen."></svg></div>
+<div class="chart-axis-label">Buitentemperatuur (°C)</div>
+<p class="micro-note">Klik, sleep of gebruik de pijltjestoetsen om de gesimuleerde buitentemperatuur te wijzigen. De lijnen tonen de berekende temperatuur, niet de werkelijke ketelwerking. De Ki-correctie wordt berekend in Tijdsimulatie.</p>
+</article>
+<article class="card parameters-card"><div class="card-head"><div><div class="eyebrow">PARAMETERS</div><h2>Stooklijn configureren</h2></div></div>
+<div class="field-stack">
+<label class="field"><span>Stooklijnfactor <small>curve_slope</small></span><input type="number" id="curve-slope" min="0" max="5" step="0.1" value="1.2"></label>
+<label class="field"><span>Kamercompensatie <small>room_kp</small></span><input type="number" id="room-kp" min="0" max="20" step="0.1" value="2"></label>
+<label class="field"><span>Integratiefactor <small>room_ki</small></span><input type="number" id="room-ki" min="0" max="1" step="0.01" value="0"></label>
+<div class="field-pair"><label class="field"><span>Min. aanvoer</span><div class="input-suffix"><input type="number" id="flow-min" min="20" max="80" step="1" value="30"><span>°C</span></div></label>
+<label class="field"><span>Max. aanvoer</span><div class="input-suffix"><input type="number" id="flow-max" min="20" max="85" step="1" value="65"><span>°C</span></div></label></div>
+<div class="field-hint" id="curve-error" aria-live="polite">De grafiek past zich direct aan.</div>
+</div><button type="button" class="button outlined wide" id="reset-curve">Standaardwaarden herstellen</button>
+<p class="micro-note">Ki wordt over tijd geïntegreerd (maximaal ±5 °C) in de tijdsimulator. Standaardwaarde is nul.</p>
+</article></div>
+<article class="card formula-card"><div><div class="eyebrow">BEREKENING</div><h2>Opbouw aanvoertemperatuur</h2></div>
+<div class="curve-metrics">
+<div><span>Basisstooklijn</span><strong id="curve-base-comp">—</strong></div>
+<div><span>Kamercompensatie (Kp)</span><strong id="curve-room-comp">—</strong></div>
+<div><span>Onbegrensd</span><strong id="curve-raw-comp">—</strong></div>
+<div><span>Met minimum/maximum</span><strong id="curve-bound-comp">—</strong></div></div>
+<p class="micro-note" id="curve-limit">—</p>
+<div class="formula">T<sub>aanvoer</sub> = begrens(T<sub>doel</sub> + slope × (T<sub>doel</sub> − T<sub>buiten</sub>) + Kp × (T<sub>doel</sub> − T<sub>kamer</sub>) + I)</div>
+<p class="micro-note">I = 0 bij deze momentopname. In de tijdsimulator worden hysterese en Ki meegenomen. Geen echte warmtevraag of ketelcommando.</p></article>
+</div>
+<div id="curve-panel-sim" hidden>
+<article class="card"><div class="card-head"><div><div class="eyebrow">OFFLINE TESTBANK</div><h2>Simuleer over tijd</h2></div><span class="pill pill-quiet">FICTIEF WONINGMODEL</span></div>
+<div class="sim-controls">
+<label class="field"><span>Scenario</span><select id="sim-scenario"><option value="cold">Koude winterdag</option><option value="sunny">Zonnige namiddag</option><option value="target">Doeltemperatuur bereikt</option><option value="fault">Buitensensor valt weg na 2 uur</option></select></label>
+<label class="field"><span>Duur</span><select id="sim-duration"><option value="6">6 uur</option><option value="24">24 uur</option></select></label>
+<button type="button" class="button outlined" id="sim-run">Herberekenen</button></div>
+<p class="micro-note" id="sim-info">Tijdsimulator met 5-minutenstappen; geen synthetische metingen.</p></article>
+<article class="card sim-room-config">
+  <div class="card-head"><div><div class="eyebrow">KAMERREGELING · OFFLINE SIMULATIE</div><h2>Beginkamertemperatuur en thermostaat</h2></div><span class="pill pill-quiet">DEMO</span></div>
+  <p class="body-text">Kies zelf hoe warm de kamer bij het begin is, welke temperatuur je wilt bereiken en hoeveel hysterese de kamerregeling gebruikt. Elke wijziging rekent de volledige tijdgrafiek opnieuw uit.</p>
+  <div class="sim-room-fields">
+    <label class="field"><span>Beginkamertemperatuur</span><div class="input-suffix"><input type="number" id="sim-room-start" min="10" max="30" step="0.1" value="19.5"><span>°C</span></div></label>
+    <label class="field"><span>Gewenste kamertemperatuur</span><div class="input-suffix"><input type="number" id="sim-room-target" min="16" max="27" step="0.1" value="21.5"><span>°C</span></div></label>
+    <label class="field"><span>Kamerhysterese (±)</span><div class="input-suffix"><input type="number" id="sim-room-hysteresis" min="0.1" max="1.5" step="0.1" value="0.2"><span>°C</span></div></label>
+  </div>
+  <div class="sim-room-actions"><button id="sim-room-reset" type="button" class="button outlined slim">Herstel scenario-beginwaarden</button><span class="field-hint" id="sim-room-settings-status" aria-live="polite">Aanpassingen blijven behouden wanneer je van scenario wisselt.</span></div>
+  <p class="micro-note">De hysterese bepaalt wanneer de <strong>kamer</strong> warmte vraagt; de aparte retourhysterese hieronder bepaalt vervolgens of de virtuele regelaar cv-vrijgave geeft. De kamertemperatuur na het begin wordt fictief berekend en niet rechtstreeks opgelegd.</p>
+</article>
+<article class="card return-gate-card">
+  <div class="card-head"><div><div class="eyebrow">EXPERIMENTELE REGELSTRATEGIE · ALLEEN DEMO</div><h2>Retourhysterese voor de tijdsimulatie</h2></div><span class="pill pill-quiet">GEEN KETELSTURING</span></div>
+  <p class="body-text">De virtuele regelaar mag pas opnieuw cv-warmte vragen als de <strong>retourtemperatuur voldoende is afgekoeld</strong>. Tijdens verwarmen kan hij de cv-vrijgave blokkeren wanneer de fictieve retour boven de bovengrens komt. De kamerhysterese blijft altijd leidend.</p>
+  <div class="return-gate-control">
+    <label class="toggle"><input type="checkbox" id="return-gate-enabled"><span class="switch"></span> Extra retourhysterese simuleren</label>
+    <div class="return-gate-fields">
+      <label class="field"><span>CV opnieuw vrijgeven bij retour ≤</span><div class="input-suffix"><input id="return-gate-on" type="number" min="20" max="75" step="0.5" value="30"><span>°C</span></div></label>
+      <label class="field"><span>CV opnieuw blokkeren bij retour ≥</span><div class="input-suffix"><input id="return-gate-off" type="number" min="20" max="75" step="0.5" value="42"><span>°C</span></div></label>
+    </div>
+    <p class="field-hint error" id="return-gate-error" role="status"></p>
+    <label class="input-group"><span class="label-row"><strong>Beginwaarde retourtemperatuur (ReturnTemp, fictief)</strong><output id="return-gate-return">35,0 °C</output></span><input id="return-gate-slider" type="range" min="15" max="75" step="0.5" value="35"></label>
+    <label class="input-group"><span class="label-row"><strong>Beginwaarde aanvoertemperatuur (FlowTemp, fictief)</strong><output id="return-gate-supply">45,0 °C</output></span><input id="return-gate-supply-slider" type="range" min="20" max="80" step="0.5" value="45"></label>
+    <label class="toggle"><input type="checkbox" id="return-gate-valid" checked><span class="switch"></span> Retourtemperatuursensor geldig</label>
+  </div>
+  <div class="return-gate-metrics">
+    <div><span>Kamer vraagt warmte</span><strong id="return-gate-room">—</strong></div>
+    <div><span>Gevraagde aanvoer</span><strong id="return-gate-target">—</strong></div>
+    <div class="return-gate-result"><span>Virtuele beslissing</span><strong id="return-gate-state">—</strong></div>
+  </div>
+  <p class="micro-note" id="return-gate-reason">—</p>
+  <p class="micro-note return-gate-warning" id="return-gate-warning">—</p>
+  <button id="return-gate-reset" type="button" class="button outlined slim">Demo-instellingen herstellen</button>
+  <p class="micro-note">De grenzen 30/42 °C zijn alleen voorbeeldwaarden, geen voorgestelde instellingen voor je Vaillant. De fictieve retour wordt per vijf minuten berekend en zal afhankelijk van het veronderstelde pomp- en radiatorgedrag afkoelen. Wanneer de pomp niet circuleert kan een gemeten retour in de ketel geen representatieve systeemtemperatuur zijn. Dit is geen echte branderregeling.</p>
+</article>
+<article class="card sim-pump-config">
+  <div class="card-head"><div><div class="eyebrow">CIRCULATIE · ALLEEN TIJDSIMULATIE</div><h2>Pompcirculatie tijdens warmtevraag</h2></div><span class="pill pill-quiet">FICTIEF</span></div>
+  <p class="micro-note">De virtuele cv-vrijgave en de circulatiepomp zijn niet hetzelfde: de retour kan blijven afkoelen zolang het water circuleert, ook als cv-warmtevraag tijdelijk geblokkeerd is.</p>
+  <button id="sim-pump-toggle" type="button" class="button sim-pump-toggle active" aria-pressed="true">Continue pomp + 45 min naloop: AAN</button>
+  <p class="micro-note">AAN: circulatie bij kamervraag, ook als de retourregeling de cv-vrijgave tijdelijk blokkeert, met 45 minuten naloop. UIT: alleen circulatie zolang de kamer warmte vraagt (zonder naloop). De andere modi blijven beschikbaar voor vergelijking.</p>
+  <label class="field sim-pump-field"><span>Gesimuleerde pompregeling</span>
+    <select id="sim-pump-mode">
+      <option value="room">Continu bij kamervraag, ook tijdens wachten op retour</option>
+      <option value="room-postrun" selected>Bij kamervraag + 45 minuten naloop</option>
+      <option value="release">Alleen bij cv-vrijgave (vergelijkingsscenario)</option>
+    </select>
+  </label>
+  <p class="micro-note" id="sim-pump-warning" role="status">De pomp blijft virtueel lopen bij warmtevraag, onafhankelijk van cv-vrijgave.</p>
+  <p class="micro-note">Bij uitgeschakelde pomp is de retourtemperatuur in de ketel niet noodzakelijk representatief voor het hele radiatorcircuit. Daarom weigert de fictieve retourregeling op zo'n moment een nieuwe vrijgave zonder betrouwbare circulatie. Deze keuzelijst stuurt geen echte pomp of ketel aan.</p>
+</article>
+<article class="card sim-chart-card">
+<div class="card-head"><div><div class="eyebrow">TIJDVERLOOP</div><h2>Woningrespons en warmtevraag</h2></div><span class="pill pill-quiet">DEMO</span></div>
+<div class="curve-legend"><span><i class="key key-base"></i>Doel (boven)</span><span><i class="key key-room"></i>Kamer (boven)</span><span><i class="key key-bound"></i>Gevraagde aanvoer (onder)</span><span><i class="key key-measured"></i>Gemeten aanvoer, fictief (onder)</span><span><i class="key key-return"></i>Retour bij circulatie</span><span><i class="key key-stagnant"></i>Lokale ketelretour (pomp uit)</span><span><i class="key key-room-demand"></i>Kamervraag</span><span><i class="key key-demand"></i>CV-vrijgave</span><span><i class="key key-pump"></i>Pomp circuleert (fictief)</span></div>
+<div class="chart-wrap"><svg id="sim-chart" viewBox="0 0 740 340" role="img" aria-label="Fictieve tijdlijn met kamer, doel, gevraagde aanvoer, gemeten aanvoer, gemeten retour, kamervraag en cv-vrijgave"></svg></div>
+<div class="sim-playback"><button type="button" class="button outlined" id="sim-play">Afspelen</button><span id="sim-step">0,0 uur</span><input type="range" id="sim-cursor" min="0" max="72" step="1" value="0" aria-label="Simulatietijdstip"></div>
+<div class="curve-metrics">
+<div><span>Kamertemperatuur</span><strong id="sim-room">—</strong></div><div><span>Buitentemperatuur</span><strong id="sim-outdoor">—</strong></div>
+<div><span>Gevraagde aanvoer</span><strong id="sim-flow">—</strong></div><div><span>Gemeten aanvoer (fictief)</span><strong id="sim-measured-flow">—</strong></div><div><span>Retour (fictief)</span><strong id="sim-measured-return">—</strong></div><div><span>Verschil aanvoer–retour</span><strong id="sim-water-delta">—</strong></div><div><span>Kamervraag</span><strong id="sim-room-demand">—</strong></div><div><span>CV-vrijgave</span><strong id="sim-demand">—</strong></div><div><span>Pomp (fictief)</span><strong id="sim-pump">—</strong></div><div><span>Retourmeting</span><strong id="sim-return-quality">—</strong></div>
+<div><span>Ki-correctie</span><strong id="sim-integral">—</strong></div></div>
+<p class="sim-summary" id="sim-cycle-summary">—</p>
+<p class="micro-note" aria-live="polite" id="sim-status">—</p>
+<p class="micro-note">De bovenste grafiek toont kamer en doel. Onder zie je gewenste aanvoer, fictieve gemeten aanvoer en fictieve retour op dezelfde temperatuurschaal. De cv-vrijgave reageert op de <strong>retourtemperatuur</strong>, niet op de aanvoer. De drie balken tonen apart kamervraag, virtuele cv-vrijgave en fictieve pompcirculatie. De retour koelt in de simulatie verder af terwijl de pomp loopt, óók wanneer de cv-vrijgave uitstaat. Bij stilstaande pomp blijft de sensorwaarde zichtbaar als gestippelde lokale ketelmeting, maar is ze niet geschikt om de gehele kring te beoordelen. Watertransport, radiatorafkoeling en naloop zijn vereenvoudigd; echte ketelmodulatie, branderblokkering en pompdebiet worden niet nagebootst. Dit is geen voorspelling van gasverbruik of rendement. Geen verbinding met eBUS, MQTT of Home Assistant.</p>
+</article></div>
+</section>
+
+        <section class="page" id="panel-diagnostics" role="tabpanel" aria-labelledby="tab-diagnostics" hidden>
+          <div class="notice"><svg><use href="#i-info"/></svg><div><strong>Synthetische voorbeeldwaarden — geen live telemetrie</strong><p>Onderstaande waarden zijn volledig synthetische voorbeelden, geen echte metingen. Alleen het afzonderlijke Ingress-paneel kan beschikbare BAI-cachegegevens tonen.</p></div></div>
+          <article class="card" id="boiler-telemetry-contract">
+  <div class="card-head"><div><div class="eyebrow">BATCH 2 · TELEMETRIECONTRACT</div><h2>Echte keteldata versus voorbeelden</h2></div><span class="pill pill-muted">INGRESS GEKOPPELD · OFFLINE NIET</span></div>
+  <p class="body-text">De read-only backend kan via MQTT <code>vaillant_ebus/v1/state/boiler/telemetry</code> publiceren. De Ingress-WebUI kan deze backendgegevens tonen in het afzonderlijke paneel hierboven. De standalone HTML blijft een offline demo. Onderstaande vaste getallen blijven synthetische voorbeelden en zijn <strong>geen live metingen</strong>.</p>
+  <p class="micro-note">De backend onderscheidt per register: <strong>disabled</strong> (bus uit), <strong>unavailable</strong> (geen cachewaarde), <strong>invalid</strong> (ongeldige decoderwaarde) en <strong>cache_unverified</strong> (waarde gelezen, maar de tijd van de oorspronkelijke eBUS-meting is onbekend). Een cachewaarde mag dus niet zomaar als verse meting worden gebruikt voor een regelbeslissing.</p>
+  <p class="micro-note">Ondersteunde BAI-cachevelden: FlowTemp, ReturnTemp, FlowTempDesired, Flame, WP, Statenumber, ModulationDesired en RemainingBoilerblocktime (d.67). De retourspiegelwaarde is geen tweede temperatuur. De daadwerkelijke koppeling van deze gegevens aan de WebUI hoort bij Batch 3.</p>
+</article>
+          <article class="card live-data-card">
+            <div class="card-head"><div><div class="eyebrow">INGRESS · GETYPEERDE KETELGEGEVENS</div><h2>BAI-metingen uit de backend</h2></div><span class="pill pill-quiet">READ-ONLY · CACHE</span></div>
+            <p class="micro-note">Deze sectie werkt uitsluitend in de Ingress-WebUI. De getoonde cachewaarden zijn niet noodzakelijk recent gemeten. <strong>cache_unverified</strong> betekent dat de oorspronkelijke fysieke meettijd onbekend is. In de offline HTML blijven de velden leeg.</p>
+            <div class="live-data-grid">
+              <div><span>Aanvoer · FlowTemp</span><strong id="live-flow_actual_c">—</strong></div>
+              <div><span>Retour · ReturnTemp</span><strong id="live-return_actual_c">—</strong></div>
+              <div><span>Gewenste aanvoer · FlowTempDesired</span><strong id="live-flow_target_c">—</strong></div>
+              <div><span>Brander · Flame</span><strong id="live-flame">—</strong></div>
+              <div><span>Pomp · WP</span><strong id="live-pump">—</strong></div>
+              <div><span>Toestand · Statenumber</span><strong id="live-boiler_state">—</strong></div>
+              <div><span>Modulatievraag</span><strong id="live-modulation_desired_pct">—</strong></div>
+              <div><span>Resterende branderblokkering</span><strong id="live-remaining_boiler_block_min">—</strong></div>
+            </div>
+            <p class="micro-note" id="live-snapshot-time">Geen backendverbinding in de standalone HTML</p>
+          </article>
+          <div class="metrics metrics-three"><article class="metric"><span class="metric-label">Aanvoer (voorbeeld)</span><div class="metric-value">34,06<span class="unit">°C</span></div><span class="metric-foot">BAI · FlowTemp</span></article><article class="metric"><span class="metric-label">Retour (voorbeeld)</span><div class="metric-value">34,00<span class="unit">°C</span></div><span class="metric-foot">BAI · ReturnTemp</span></article><article class="metric"><span class="metric-label">Setpoint ketel (voorbeeld)</span><div class="metric-value">39,00<span class="unit">°C</span></div><span class="metric-foot">BAI · FlowTempDesired</span></article></div>
+          <article class="card"><div class="card-head"><div><div class="eyebrow">READ-ONLY REGISTERS</div><h2>Ketelstatus</h2></div><span class="pill pill-muted">GEEN LIVE VERBINDING</span></div><div class="diagnostic-rows"><div><span>Flame</span><strong>off</strong><small>Branderstatus · voorbeeld</small></div><div><span>WP</span><strong>on</strong><small>Interne pomp · voorbeeld</small></div><div><span>Statenumber</span><strong>7</strong><small>Ketelstatus · pomp-naloopmoment</small></div><div><span>HcPumpMode</span><strong>post_run</strong><small>Bestaande instelling d.18 = 0</small></div><div><span>WPPostrunTime</span><strong>45 min</strong><small>Bestaande gebruikersinstelling</small></div><div><span>PowerValue</span><strong>Niet gevalideerd</strong><small>Decoderinterpretatie onzeker</small></div></div></article>
+          <article class="card"><div class="card-head"><div><div class="eyebrow">POMP</div><h2>Circulatie na branderstop</h2></div></div><div class="observation"><div><span class="small-label">Vastgelegde naloop</span><div class="value-md">≥ 7m 10s</div></div><p>De pomp bleef na de waargenomen branderstop draaien tot het einde van de synthetische opname. Het werkelijke stopmoment is niet vastgelegd.</p></div><div class="micro-note">De functie voor pompstrategie is voorlopig adviserend. De app kan de pomp niet rechtstreeks schakelen.</div></article>
+        </section>
+
+        <section class="page" id="panel-events" role="tabpanel" aria-labelledby="tab-events" hidden>
+          <article class="card live-data-card"><div class="card-head"><div><div class="eyebrow">BACKEND · ALLEEN LEZEN</div><h2>Ontvangen statusberichten</h2></div></div><p class="micro-note">Bij Ingress komen hier MQTT-ontvangstgebeurtenissen. Geen permanent logboek of actieve ketelcommando's.</p><div id="live-events">Geen backendverbinding in dit bestand.</div></article>
+          <article class="card"><div class="card-head"><div><div class="eyebrow">GEBEURTENISSEN</div><h2>UI-activiteit</h2></div><button class="button outlined slim" id="clear-events" type="button">Lijst leegmaken</button></div><p class="micro-note">Dit is uitsluitend een lokale demo-activiteitslijst, geen echte ebusd-, MQTT- of Home Assistant-log.</p><div class="event-list" id="event-list" role="log" aria-live="polite"></div></article></section>
+
+
+
+        <section class="page" id="panel-mqtt" role="tabpanel" aria-labelledby="tab-mqtt" hidden>
+          <div class="notice"><svg><use href="#i-info"/></svg><div><strong id="mqtt-live-caption">MQTT Explorer · uitsluitend demonstratie</strong><p id="mqtt-live-description">Alle berichten hieronder worden lokaal gegenereerd. Er bestaat nog geen brokerverbinding, REST-server of MQTT-abonnement. De definitieve viewer wordt alleen voor debugging gebruikt en kan niets publiceren.</p><p id="live-stream-status">Geen echte stream in de standalone HTML</p></div></div>
+          <div class="mqtt-metrics">
+            <article class="metric"><span class="metric-label">Brokerverbinding</span><div class="mqtt-metric-state"><span class="mqtt-indicator mqtt-indicator-demo"></span> <span id="mqtt-broker-connection">Niet verbonden</span></div><span class="metric-foot">Home Assistant Ingress · MQTT-credentials alleen op server</span></article>
+            <article class="metric"><span class="metric-label">Demo-berichten</span><div class="metric-value" id="mqtt-count">0</div><span class="metric-foot">Maximaal 200 in geheugen</span></article>
+            <article class="metric"><span class="metric-label">Unieke topics</span><div class="metric-value" id="mqtt-topics">0</div><span class="metric-foot">Topicboom links</span></article>
+            <article class="metric"><span class="metric-label">Demo-stream</span><div class="mqtt-metric-state" id="mqtt-stream-status">Gepauzeerd</div><span class="metric-foot">Alleen actief op deze tab</span></article>
+          </div>
+
+          <article class="card mqtt-toolbar">
+            <div class="mqtt-toolbar-row">
+              <label class="mqtt-control"><span>Topicfilter (MQTT + / #)</span><input type="text" id="mqtt-filter" value="vaillant_ebus/v1/#" placeholder="vaillant_ebus/v1/#" spellcheck="false" maxlength="180" aria-label="MQTT-topicfilter"></label>
+              <label class="mqtt-control"><span>Zoeken in topic en payload</span><input type="search" id="mqtt-search" placeholder="Bijv. FlowTemp of sensor" spellcheck="false" aria-label="Zoeken in MQTT-berichten" maxlength="100"></label>
+              <div class="mqtt-toolbar-actions"><button class="button outlined" type="button" id="mqtt-pause">Pauzeren</button><button class="button ghost" type="button" id="mqtt-clear">Lijst wissen</button></div>
+            </div>
+            <div class="mqtt-filter-presets" aria-label="MQTT-filtervoorbeelden">
+              <span>Snelfilters</span>
+              <button type="button" data-mqtt-filter="vaillant_ebus/v1/#">Controller</button>
+              <button type="button" data-mqtt-filter="ebusd/#">ebusd</button>
+              <button type="button" data-mqtt-filter="#">Alle demo-topics</button>
+            </div>
+            <p class="mqtt-filter-error" id="mqtt-filter-error" role="status" aria-live="polite"></p>
+          </article>
+
+          <div class="mqtt-explorer">
+            <aside class="card mqtt-tree-card">
+              <div class="card-head"><div><div class="eyebrow">TOPIC-OVERZICHT</div><h2>Topicboom</h2></div><span class="pill pill-muted">DEMO</span></div>
+              <p class="micro-note">Klik op een map om alle onderliggende topics te filteren, of kies één eindtopic.</p>
+              <div id="mqtt-tree" class="mqtt-tree" role="navigation" aria-label="MQTT-topicboom"></div>
+            </aside>
+            <div class="mqtt-feed-column">
+              <article class="card mqtt-feed-card">
+                <div class="card-head"><div><div class="eyebrow">BERICHTENSTREAM</div><h2>Ontvangen voorbeelden <small id="mqtt-visible-count" class="mqtt-count-inline"></small></h2></div><span class="pill pill-quiet">ALLEEN LEZEN</span></div>
+                <div class="mqtt-feed-head"><span>Tijd</span><span>Topic</span><span>QoS / retain</span><span>Waarde</span></div>
+                <div id="mqtt-feed" class="mqtt-feed" role="list" aria-label="MQTT-berichten"></div>
+              </article>
+              <article class="card mqtt-detail-card">
+                <div class="card-head"><div><div class="eyebrow">BERICHTDETAIL</div><h2 id="mqtt-detail-heading">Selecteer een bericht</h2></div><span class="pill pill-muted" id="mqtt-detail-type">DEMO</span></div>
+                <div id="mqtt-detail-meta" class="mqtt-detail-meta">Klik op een bericht om het tijdstip, topic, QoS en eventuele retain-vlag te zien.</div>
+                <pre id="mqtt-detail-payload" class="mqtt-payload" aria-label="Payload">Geen bericht geselecteerd.</pre>
+              </article>
+            </div>
+          </div>
+          <p class="micro-note mqtt-bottom-note">Later: read-only MQTT-feed uit de add-on, met limieten, topic-allowlist en afscherming van gevoelige gegevens. Geen publish-knop of brede brokerverkenning zonder expliciete toestemming.</p>
+        </section>
+
+        <section class="page" id="panel-terminal" role="tabpanel" aria-labelledby="tab-terminal" hidden>
+          <div class="notice"><svg><use href="#i-info"/></svg><div><strong id="terminal-live-caption">Offline demo of Ingress read-only</strong><p id="terminal-live-description">In de standalone HTML toont deze terminal voorbeelden. Via Ingress zijn alleen exact toegestane BAI-cachelezingen beschikbaar. Geen shell, MQTT-publish, SetMode, scan of eBUS-writes.</p></div></div>
+          <div class="terminal-layout">
+            <article class="card terminal-card">
+              <div class="card-head terminal-heading"><div><div class="eyebrow">DIAGNOSTISCHE CONSOLE</div><h2>Terminal</h2></div><span class="pill pill-quiet">SIMULATIE · READ-ONLY</span></div>
+              <div class="terminal-modes" role="group" aria-label="Terminaltype">
+                <button type="button" class="terminal-mode active" data-terminal-mode="ebusd" aria-pressed="true">ebusd-console</button>
+                <button type="button" class="terminal-mode" data-terminal-mode="shell" aria-pressed="false">Containershell <span class="terminal-lock">later</span></button>
+              </div>
+              <p class="micro-note" id="terminal-description">Voorbeeld van de tekstinterface van ebusd via localhost TCP. Alleen vooraf gedefinieerde demonstratiecommando's geven voorbeeldoutput.</p>
+              <div class="terminal-screen" role="region" aria-label="Terminaluitvoer">
+                <div class="terminal-top"><div><span class="terminal-led"></span> Vaillant eBUS <span class="terminal-top-muted">/ demo</span></div><button type="button" class="terminal-clear" id="terminal-clear">Wissen</button></div>
+                <div id="terminal-output" class="terminal-output" role="log" aria-live="polite" aria-relevant="additions text"></div>
+                <form class="terminal-form" id="terminal-form" autocomplete="off">
+                  <label class="terminal-prompt" for="terminal-input" id="terminal-prompt">ebusd&gt;</label>
+                  <input id="terminal-input" class="terminal-input" type="text" placeholder="Typ help voor beschikbare voorbeelden" spellcheck="false" aria-label="Terminalcommando (uitsluitend demo)" maxlength="180">
+                  <button type="submit" class="button terminal-run" id="terminal-run">Uitvoeren (demo)</button>
+                </form>
+              </div>
+              <div class="terminal-presets" id="terminal-presets" aria-label="Voorbeeldcommando's">
+                <span>Voorbeelden</span>
+                <button type="button" data-terminal-command="help"><code>help</code></button>
+                <button type="button" data-terminal-command="info"><code>info</code></button>
+                <button type="button" data-terminal-command="state"><code>state</code></button>
+                <button type="button" data-terminal-command="read -c bai FlowTemp"><code>read -c bai FlowTemp</code></button>
+              </div>
+            </article>
+            <aside class="card terminal-help"><div class="eyebrow">TOEGANG EN VEILIGHEID</div><h2>Twee terminalmodi</h2>
+              <div class="terminal-help-item"><strong>ebusd-console</strong><p>Later uit te voeren via een beperkte REST-API naar de lokale ebusd-TCP-interface. Standaard alleen veilige cachelezingen en status. Niet de werkelijke ketel besturen.</p></div>
+              <div class="terminal-help-item"><strong>Containershell</strong><p>Later een echte interactieve shell via WebSocket/PTY achter Home Assistant Ingress, uitsluitend voor bevoegde beheerders en expliciet ingeschakeld.</p></div>
+              <div class="terminal-help-item"><strong>Huidige beperking</strong><p>Geen willekeurige command-uitvoering, geen shell, geen wachtwoorden, geen toegang tot de adapter. Live besturing blijft verboden.</p></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden><div class="grid-main">
+          <article class="card sensor-settings-card" id="sensor-settings">
+            <div class="card-head"><div><div class="eyebrow">HOME ASSISTANT · SIMULATIE</div><h2>Temperatuursensoren</h2></div><span class="pill pill-muted">DEMO</span></div>
+            <div class="sensor-settings-fields">
+              <div class="sensor-field">
+                <label class="sensor-label" for="sensor-room-trigger">Kamertemperatuur</label>
+                <div class="sensor-select-wrap" data-sensor-control="room">
+                  <button type="button" id="sensor-room-trigger" class="sensor-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="sensor-room-menu" aria-label="Kamertemperatuursensor kiezen"><span id="sensor-room-selected">Woonkamer · temperatuur</span><svg aria-hidden="true"><use href="#i-chevron"/></svg></button>
+                  <div class="sensor-dropdown" id="sensor-room-menu" hidden>
+                    <div class="sensor-search-box"><input type="search" id="sensor-room-search" class="sensor-search-input" placeholder="Zoek sensor..." autocomplete="off" spellcheck="false" aria-label="Zoek kamertemperatuursensor" maxlength="100"></div>
+                    <div class="sensor-option-list" id="sensor-room-options" role="listbox" aria-label="Beschikbare kamertemperatuursensoren"></div>
+                  </div>
+                </div>
+                <div class="sensor-feedback"><span class="sensor-availability" id="sensor-room-availability">✓ Sensor beschikbaar</span><span id="sensor-room-value">18,2 °C</span></div>
+              </div>
+              <div class="sensor-field">
+                <label class="sensor-label" for="sensor-outdoor-trigger">Buitentemperatuur</label>
+                <div class="sensor-select-wrap" data-sensor-control="outdoor">
+                  <button type="button" id="sensor-outdoor-trigger" class="sensor-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="sensor-outdoor-menu" aria-label="Buitentemperatuursensor kiezen"><span id="sensor-outdoor-selected">Weerstation · buitentemperatuur</span><svg aria-hidden="true"><use href="#i-chevron"/></svg></button>
+                  <div class="sensor-dropdown" id="sensor-outdoor-menu" hidden>
+                    <div class="sensor-search-box"><input type="search" id="sensor-outdoor-search" class="sensor-search-input" placeholder="Zoek sensor..." autocomplete="off" spellcheck="false" aria-label="Zoek buitentemperatuursensor" maxlength="100"></div>
+                    <div class="sensor-option-list" id="sensor-outdoor-options" role="listbox" aria-label="Beschikbare buitentemperatuursensoren"></div>
+                  </div>
+                </div>
+                <div class="sensor-feedback"><span class="sensor-availability" id="sensor-outdoor-availability">✓ Sensor beschikbaar</span><span id="sensor-outdoor-value">6,0 °C</span></div>
+              </div>
+              <details class="sensor-advanced"><summary>Geavanceerde sensorinstellingen</summary><div class="sensor-advanced-body"><p>Bij ontbrekende, ongeldige of verouderde meetwaarden wordt de warmtevraag in de controller geblokkeerd (standaard maximaal 10 minuten oud).</p><p>Extra sensoren combineren en automatische fallback komen in een latere backendfase. Deze selectie bewaart niets en verstuurt geen MQTT-berichten.</p></div></details>
+            </div>
+          </article><article class="card"><div class="card-head"><div><div class="eyebrow">PROTOTYPE</div><h2>Interface-instellingen</h2></div></div><div class="setting-rows"><div><div><strong>Donkere weergave</strong><small>Huidige vormgeving voor Home Assistant</small></div><span class="pill pill-quiet">Actief</span></div><div><div><strong>Databron</strong><small>Geen verbinding met Home Assistant</small></div><span class="pill pill-off">Lokale demo</span></div><div><div><strong>REST-backend</strong><small>Wordt pas na goedkeuring van de UI toegevoegd</small></div><span class="pill pill-muted">Gepland</span></div><div><div><strong>eBUS-writes</strong><small>SetMode en pomp-override niet voorzien in huidige build</small></div><span class="pill pill-off">Geblokkeerd</span></div></div><button class="button outlined" type="button" id="reset-all">Demo resetten</button></article></div><article class="card settings-rest-card"><div class="card-head"><div><div class="eyebrow">TOEKOMSTIGE INTEGRATIE</div><h2>REST-architectuur</h2></div></div><p class="body-text">Na de UI-review kunnen we deze frontend vanuit de add-on via Home Assistant Ingress aanbieden. De interface praat dan met een kleine REST-backend voor status, instellingen, logs en diagnostiek.</p><div class="api-rows"><code>GET /api/v1/status</code><code>GET /api/v1/climate</code><code>GET /api/v1/curve</code><code>GET /api/v1/diagnostics</code><code>GET /api/v1/events</code></div><p class="micro-note">Deze endpoints zijn alleen een toekomstig voorstel. Er worden nog geen netwerkverzoeken verstuurd.</p></article><article class="card"><div class="card-head"><div><div class="eyebrow">DEMO-TOESTAND</div><h2>Huidige UI-data</h2></div><button class="button outlined slim" type="button" id="copy-state">JSON kopiëren</button></div><pre class="json-preview" id="json-preview"></pre></article></section>
+
+        <footer class="footer"><span>Vaillant eBUS Control · WebUI preview / Ingress</span><span id="live-footer">Offline demo · geen ketelsturing</span></footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Do not commit private household data, logs or credentials.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+*.pcap
+*.db
+*.sqlite*
+secrets.yaml
+**/secrets.yaml
+captures/
+data/
+private/
+memory/
+docs/AGENT_HANDOFF.md
+docs/CONTEXT.md
+dist/
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+.idea/
+.vscode/
